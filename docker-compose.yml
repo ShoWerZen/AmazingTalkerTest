@@ -1,0 +1,32 @@
+version: '3.6'
+
+services:
+  at_mongo:
+    image: mongo:latest
+    container_name: at_mongo
+    networks:
+      at_networks:
+         aliases:
+          - mongodb
+    volumes:
+      - "at_mongo_volume_db:/data/db/"
+
+  at_node:
+    build: 
+      context: ./
+      dockerfile: Dockerfile-node
+    container_name: at_node
+    networks:
+      - at_networks
+    expose:
+      - "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - at_mongo
+
+networks:
+  at_networks:
+
+volumes:
+  at_mongo_volume_db:

@@ -1,0 +1,131 @@
+extends layout
+
+block top_script
+    script(src="https://apis.google.com/js/client:platform.js?onload=googleStart" async defer)
+    script.
+        function googleStart() {
+            gapi.load('auth2', function() {
+                auth2 = gapi.auth2.init({
+                    client_id: !{JSON.stringify(googleClientId)}
+                });
+            });
+        }
+block content
+    script.
+        window.fbAsyncInit = function() {
+            FB.init({
+                appId      : !{JSON.stringify(facebookApiId)},
+                cookie     : true,
+                xfbml      : true,
+                version    : !{JSON.stringify(facebookApiVersion)}
+            });
+
+            FB.AppEvents.logPageView();
+        };
+
+        (function(d, s, id){
+            var js, fjs = d.getElementsByTagName(s)[0];
+            if (d.getElementById(id)) {return;}
+            js = d.createElement(s); 
+            js.id = id;
+            js.src = "https://connect.facebook.net/en_US/sdk.js";
+            fjs.parentNode.insertBefore(js, fjs);
+        }(document, 'script', 'facebook-jssdk'));
+    div.container
+        div.row.mt-2
+            h1 Sign Up
+        div.row.mt-2
+            input#name.form-control(type="text" placeholder="Name")
+        div.row.mt-2
+            input#email.form-control(type="email" placeholder="Email")
+        div.row.mt-2
+            input#password.form-control(type="password" placeholder="Password(at least #{password_min_length} characters)")
+        div.row.mt-2
+            input#password_comfirmation.form-control(type="password" placeholder="Re-enter password")
+        div.row.mt-2
+            button#signup_btn.btn.btn-primary.mr-2 Sign Up
+            button#google_btn.btn.btn-secondary.mr-2 Google
+            button#facebook_btn.btn.btn-secondary.mr-2 Facebook
+
+block bottom_script
+    script.
+        $(document).ready(() => {
+            $("#signup_btn").click(async () => {
+                try{
+                    let _result = await signup($("#name").val(), $("#email").val(), $("#password").val(), $("#password_comfirmation").val(), null, null);
+                    alert(JSON.stringify(_result));
+                }
+                catch(err){
+                    alert(err.responseJSON.error);
+                }
+            });
+
+            $("#google_btn").click(() => {
+                auth2.grantOfflineAccess({ scope: 'profile email' }).then(onGoogleSignIn);
+            });
+
+            $("#facebook_btn").click(() => {
+                FB.login(onFacebookSignIn, {
+                    scope: 'email, public_profile', 
+                    return_scopes: true
+                });
+            });
+
+            function onFacebookSignIn(_response){
+                if(_response.status == "connected"){
+                    $.ajax({
+                        url: "/facebooksignup",
+                        method: "post",
+                        data: {
+                            token: _response.authResponse.accessToken
+                        }
+                    }).done(function(_result){
+                        alert(JSON.stringify(_result));
+                    }).fail(function(err){
+                        alert(err.responseJSON.error);
+                    });
+                }
+                else
+                    alert("Facebook Auth Fail");
+            }
+            
+
+            function onGoogleSignIn(_authResult){
+                if(_authResult["code"]){
+                    $.ajax({
+                        url: "/googlesignup",
+                        method: "post",
+                        data: {
+                            code: _authResult["code"]
+                        }
+                    }).done(function(_result){
+                        alert(JSON.stringify(_result));
+                    }).fail(function(err){
+                        alert(err.responseJSON.error);
+                    });
+                }
+                else
+                    alert("Google Auth Code Missing");
+            }
+
+            function signup(_name, _email, _password, _passwordConfirmation, _googleToken, _facebookToken){
+                return new Promise((resolve, reject) => {
+                    $.ajax({
+                        url: "/signup",
+                        method: "post",
+                        data: {
+                            name: _name,
+                            email: _email,
+                            password: _password,
+                            password_comfirmation: _passwordConfirmation,
+                            googleToken: _googleToken,
+                            facebookToken: _facebookToken
+                        }
+                    }).done(function(_result){
+                        resolve(_result);
+                    }).fail(function(err){
+                        reject(err);
+                    });
+                });
+            }
+        });

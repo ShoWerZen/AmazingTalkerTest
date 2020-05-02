@@ -1,0 +1,11 @@
+FROM node:12.16.3
+MAINTAINER ShoWerZen
+
+RUN mkdir /app
+WORKDIR /app
+COPY . /app
+
+RUN rm -rf node_modules
+RUN npm install && npm cache clean --force
+
+CMD npm start
